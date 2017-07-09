@@ -144,8 +144,8 @@ def keysym_to_mod(keysym):
 
 class LabelManager(object):
     def __init__(self, listener, logger, key_mode, bak_mode, mods_mode, mods_only,
-                 multiline, vis_shift, vis_space, recent_thr, compr_cnt, ignore, window_whitelist,
-                 pango_ctx):
+                 multiline, vis_shift, vis_space, recent_thr, compr_cnt, ignore,
+                 window_whitelist, window_name, pango_ctx):
         self.key_mode = key_mode
         self.bak_mode = bak_mode
         self.mods_mode = mods_mode
@@ -162,6 +162,7 @@ class LabelManager(object):
         self.compr_cnt = compr_cnt
         self.ignore = ignore
         self.window_whitelist = window_whitelist
+        self.window_name = window_name
         self.kl = None
         self.font_families = {x.get_name() for x in pango_ctx.list_families()}
         self.update_replacement_map()
@@ -276,7 +277,10 @@ class LabelManager(object):
         if event.symbol in self.ignore:
             self.logger.debug("Key ignored  {:5}(ks): {}".format(event.keysym, event.symbol))
             return
-        if event.window not in self.window_whitelist:
+        if self.window_whitelist and event.window not in self.window_whitelist:
+            self.logger.debug("Key from blacklisted window {:5}(ks): {}".format(event.keysym, event.symbol))
+
+        if self.window_name and event.window_name not in self.window_name:
             self.logger.debug("Key from blacklisted window {:5}(ks): {}".format(event.keysym, event.symbol))
             return
         if event.filtered:

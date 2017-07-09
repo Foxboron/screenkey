@@ -85,6 +85,8 @@ def main():
                     help=_("Compress key repeats after the specified count"))
     ap.add_argument("-w",'--window-whitelist', metavar="WindowId", action='append', type=int,
                     help=_("List of whitelisted windows to show keypresses from"))
+    ap.add_argument("-n", "--window-name", dest='window_name',
+                    help=_("Word inn titles for the window to record"))
     args = ap.parse_args()
 
     # Set options
@@ -92,7 +94,7 @@ def main():
     for arg in ['timeout', 'position', 'persist', 'font_desc', 'font_color', 'bg_color',
                 'font_size', 'geometry', 'key_mode', 'bak_mode', 'mods_mode', 'mods_only',
                 'multiline', 'vis_shift', 'vis_space', 'screen', 'no_systray',
-                'opacity', 'ignore', 'compr_cnt', 'window_whitelist']:
+                'opacity', 'ignore', 'compr_cnt', 'window_whitelist', 'window_name']:
         if getattr(args, arg) is not None:
             options[arg] = getattr(args, arg)
 

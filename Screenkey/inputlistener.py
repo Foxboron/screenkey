@@ -148,7 +148,8 @@ def keysym_to_unicode(keysym):
 class KeyData():
     def __init__(self, pressed=None, filtered=None, repeated=None,
                  string=None, keysym=None, status=None, symbol=None,
-                 mods_mask=None, modifiers=None, window=None):
+                 mods_mask=None, modifiers=None, window=None,
+                 window_name=None):
         self.pressed = pressed
         self.filtered = filtered
         self.repeated = repeated
@@ -159,6 +160,7 @@ class KeyData():
         self.mods_mask = mods_mask
         self.modifiers = modifiers
         self.window = window
+        self.window_name = window_name
 
 
 class InputType:
@@ -179,6 +181,10 @@ class InputListener(threading.Thread):
         self.lock = threading.Lock()
         self.stopped = True
 
+        self.disp = Xlib.display.Display()
+        self.root = self.disp.screen().root
+        self.NET_ACTIVE_WINDOW = self.disp.intern_atom('_NET_ACTIVE_WINDOW')
+        self.NET_WM_NAME = self.disp.intern_atom('_NET_WM_NAME')
 
     def _event_received(self, ev):
         if xlib.KeyPress <= ev.type <= xlib.MotionNotify:
@@ -280,7 +286,7 @@ class InputListener(threading.Thread):
         xlib.XCloseIM(self._kbd_replay_xim)
 
 
-    def _kbd_process(self, ev, win_id):
+    def _kbd_process(self, ev):
         if ev.type == xlib.ClientMessage and \
            ev.xclient.message_type == self.custom_atom:
             if ev.xclient.data[0] in [xlib.FocusIn, xlib.FocusOut]:
@@ -300,10 +306,17 @@ class InputListener(threading.Thread):
             return
         if ev.type not in [xlib.KeyPress, xlib.KeyRelease]:
             return
-
+        
+        window_name = None
+        win_id = self.root.get_full_property(self.NET_ACTIVE_WINDOW,
+                           Xlib.X.AnyPropertyType).value[0]
+        if win_id:
+            win_obj = self.disp.create_resource_object('window', win_id)
+            window_name = win_obj.get_full_property(self.NET_WM_NAME, Xlib.X.AnyPropertyType).value
         # generate new keyboard event
         data = KeyData()
         data.window = win_id
+        data.window_name = window_name
         data.filtered = filtered
         data.pressed = (ev.type == xlib.KeyPress)
         data.repeated = (ev.type == self._kbd_last_ev.type and \
@@ -332,9 +345,6 @@ class InputListener(threading.Thread):
 
         if self.input_types & InputType.keyboard:
             self._kbd_init()
-        disp = Xlib.display.Display()
-        root = disp.screen().root
-        NET_ACTIVE_WINDOW = disp.intern_atom('_NET_ACTIVE_WINDOW')
 
         # initialize recording context
         ev_ranges = []
@@ -378,9 +388,7 @@ class InputListener(threading.Thread):
                 ev = xlib.XEvent()
                 xlib.XNextEvent(self.replay_dpy, xlib.byref(ev))
                 if self.input_types & InputType.keyboard:
-                    win_id = root.get_full_property(NET_ACTIVE_WINDOW,
-                                       Xlib.X.AnyPropertyType).value[0]
-                    self._kbd_process(ev, win_id)
+                    self._kbd_process(ev)
 
         # finalize
         xlib.XRecordFreeContext(self.control_dpy, self.record_ctx)
