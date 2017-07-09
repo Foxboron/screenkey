@@ -38,6 +38,7 @@ class Screenkey(gtk.Window):
                             'recent_thr': 0.1,
                             'compr_cnt': 3,
                             'ignore': [],
+                            'window_whitelist': [],
                             'position': 'bottom',
                             'persist': False,
                             'font_desc': 'Sans Bold',
@@ -280,6 +281,7 @@ class Screenkey(gtk.Window):
                                       recent_thr=self.options.recent_thr,
                                       compr_cnt=self.options.compr_cnt,
                                       ignore=self.options.ignore,
+                                      window_whitelist=self.options.window_whitelist,
                                       pango_ctx=self.label.get_pango_context())
         self.labelmngr.start()
 

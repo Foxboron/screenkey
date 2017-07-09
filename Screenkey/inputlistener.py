@@ -52,6 +52,8 @@ import threading
 import warnings
 import select
 
+import Xlib
+import Xlib.display
 
 # convenience wrappers
 def coalesce_ranges(ranges):
@@ -146,7 +148,7 @@ def keysym_to_unicode(keysym):
 class KeyData():
     def __init__(self, pressed=None, filtered=None, repeated=None,
                  string=None, keysym=None, status=None, symbol=None,
-                 mods_mask=None, modifiers=None):
+                 mods_mask=None, modifiers=None, window=None):
         self.pressed = pressed
         self.filtered = filtered
         self.repeated = repeated
@@ -156,6 +158,7 @@ class KeyData():
         self.symbol = symbol
         self.mods_mask = mods_mask
         self.modifiers = modifiers
+        self.window = window
 
 
 class InputType:
@@ -277,7 +280,7 @@ class InputListener(threading.Thread):
         xlib.XCloseIM(self._kbd_replay_xim)
 
 
-    def _kbd_process(self, ev):
+    def _kbd_process(self, ev, win_id):
         if ev.type == xlib.ClientMessage and \
            ev.xclient.message_type == self.custom_atom:
             if ev.xclient.data[0] in [xlib.FocusIn, xlib.FocusOut]:
@@ -300,6 +303,7 @@ class InputListener(threading.Thread):
 
         # generate new keyboard event
         data = KeyData()
+        data.window = win_id
         data.filtered = filtered
         data.pressed = (ev.type == xlib.KeyPress)
         data.repeated = (ev.type == self._kbd_last_ev.type and \
@@ -328,6 +332,9 @@ class InputListener(threading.Thread):
 
         if self.input_types & InputType.keyboard:
             self._kbd_init()
+        disp = Xlib.display.Display()
+        root = disp.screen().root
+        NET_ACTIVE_WINDOW = disp.intern_atom('_NET_ACTIVE_WINDOW')
 
         # initialize recording context
         ev_ranges = []
@@ -371,7 +378,9 @@ class InputListener(threading.Thread):
                 ev = xlib.XEvent()
                 xlib.XNextEvent(self.replay_dpy, xlib.byref(ev))
                 if self.input_types & InputType.keyboard:
-                    self._kbd_process(ev)
+                    win_id = root.get_full_property(NET_ACTIVE_WINDOW,
+                                       Xlib.X.AnyPropertyType).value[0]
+                    self._kbd_process(ev, win_id)
 
         # finalize
         xlib.XRecordFreeContext(self.control_dpy, self.record_ctx)
